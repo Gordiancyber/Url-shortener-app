@@ -58,4 +58,11 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func main() {
+	http.HandleFunc("/shorten", shortenURLHandler) // Handle URL shortening requests
+	http.HandleFunc("/", redirectHandler)          // Handle short URL redirection
+
+	fmt.Println("Server started at :8080")
+	http.ListenAndServe(":8080", nil) // Start the HTTP server on port 8080
+}
 
