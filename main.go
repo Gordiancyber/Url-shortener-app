@@ -48,4 +48,13 @@ func shortenURLHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(responseJSON)                                        // Write the JSON response
 }
 
+func redirectHandler(w http.ResponseWriter, r *http.Request) {
+	shortURL := r.URL.Path[1:]         // Extract the short URL from the request path
+	if originalURL, exists := urlMapping[shortURL]; exists {
+		http.Redirect(w, r, originalURL, http.StatusFound) // Redirect to the original URL
+	} else {
+		http.Error(w, "Short URL not found", http.StatusNotFound) // Return an error if short URL is not found
+	}
+}
+
 
