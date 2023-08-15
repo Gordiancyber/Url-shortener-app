@@ -19,3 +19,10 @@ var (
 	mutex      sync.Mutex
 )
 
+func generateShortURL(url string) string {
+	hasher := md5.New()
+	hasher.Write([]byte(url))
+	return hex.EncodeToString(hasher.Sum(nil))[:6]
+}
+
+
