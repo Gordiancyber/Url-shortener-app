@@ -48,6 +48,7 @@ func shortenURLHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(responseJSON)                                        // Write the JSON response
 }
 
+// redirectHandler handles redirecting short URLs to original URLs
 func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	shortURL := r.URL.Path[1:]         // Extract the short URL from the request path
 	if originalURL, exists := urlMapping[shortURL]; exists {
