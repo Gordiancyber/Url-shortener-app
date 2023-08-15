@@ -12,3 +12,10 @@ import (
 	"golang.org/x/net/context"
 )
 
+var (
+	ctx        = context.Background()
+	redisClient *redis.Client
+
+	mutex      sync.Mutex
+)
+
