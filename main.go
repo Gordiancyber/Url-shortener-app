@@ -29,3 +29,8 @@ func shortenURLHandler(w http.ResponseWriter, r *http.Request) {
 	// ...
 }
 
+func getShortURL(originalURL string) (string, bool) {
+	// ...
+}
+
+
