@@ -14,6 +14,11 @@ var (
 	mutex      sync.Mutex                // A mutex to ensure thread-safe access to the urlMapping
 )
 
+func generateShortURL(url string) string {
+	hasher := md5.New()                      // Create an MD5 hash object
+	hasher.Write([]byte(url))                // Write the original URL bytes to the hash object
+	return hex.EncodeToString(hasher.Sum(nil))[:6] // Generate a hex-encoded hash and truncate to 6 characters
+}
 
 
 
