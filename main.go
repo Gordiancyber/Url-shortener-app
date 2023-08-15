@@ -20,5 +20,32 @@ func generateShortURL(url string) string {
 	return hex.EncodeToString(hasher.Sum(nil))[:6] // Generate a hex-encoded hash and truncate to 6 characters
 }
 
+func shortenURLHandler(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		URL string `json:"url"` // Struct to hold the incoming JSON data
+	}
+	err := json.NewDecoder(r.Body).Decode(&data) // Decode JSON request body into the data struct
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if data.URL == "" {
+		http.Error(w, "URL missing", http.StatusBadRequest)
+		return
+	}
+
+	mutex.Lock()         // Lock the mutex to ensure thread-safe access to urlMapping
+	defer mutex.Unlock() // Unlock the mutex when the function exits
+
+	shortURL := generateShortURL(data.URL) // Generate a short URL for the original URL
+	urlMapping[shortURL] = data.URL        // Store the original URL in the urlMapping
+
+	response := map[string]string{"short_url": shortURL}         // Create a response map
+	responseJSON, _ := json.Marshal(response)                    // Convert the response map to JSON
+	w.Header().Set("Content-Type", "application/json")            // Set the response header
+	w.WriteHeader(http.StatusCreated)                             // Set the HTTP status code
+	w.Write(responseJSON)                                        // Write the JSON response
+}
 
 
