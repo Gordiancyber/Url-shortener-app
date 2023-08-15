@@ -33,4 +33,8 @@ func getShortURL(originalURL string) (string, bool) {
 	// ...
 }
 
+func storeURLMapping(shortURL, originalURL string) {
+	// ...
+}
+
 
