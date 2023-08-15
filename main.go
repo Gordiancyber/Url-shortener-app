@@ -41,4 +41,23 @@ func redirectHandler(w http.ResponseWriter, r *http.Request) {
 	// ...
 }
 
+func main() {
+	// Initialize the Redis client
+	redisClient = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379", // Replace with your Redis server address
+		Password: "",              // No password
+		DB:       0,               // Default DB
+	})
+
+	// Handle URL shortening requests
+	http.HandleFunc("/shorten", shortenURLHandler)
+
+	// Handle short URL redirection
+	http.HandleFunc("/", redirectHandler)
+
+	// Start the server on port 80
+	fmt.Println("Server started at :8080")
+	http.ListenAndServe(":8080", nil)
+}
+
 
