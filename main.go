@@ -25,4 +25,7 @@ func generateShortURL(url string) string {
 	return hex.EncodeToString(hasher.Sum(nil))[:6]
 }
 
+func shortenURLHandler(w http.ResponseWriter, r *http.Request) {
+	// ...
+}
 
