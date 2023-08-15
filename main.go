@@ -37,4 +37,8 @@ func storeURLMapping(shortURL, originalURL string) {
 	// ...
 }
 
+func redirectHandler(w http.ResponseWriter, r *http.Request) {
+	// ...
+}
+
 
