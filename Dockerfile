@@ -1,23 +1,23 @@
 # Use the official Go image as the base image
-FROM golang:1.16
+FROM golang:1.17-alpine
 
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy the Go modules files
+# Copy the Go module and Go sum files
 COPY go.mod go.sum ./
 
 # Download the Go modules
 RUN go mod download
 
-# Copy the rest of the application code
+# Copy the rest of the application files
 COPY . .
 
 # Build the Go application
-RUN go build -o main .
+RUN go build -o url-shortener .
 
-# Expose the port the application listens on
+# Expose the port your application listens on
 EXPOSE 8080
 
-# Command to run the application
-CMD ["./main"]
+# Start the application when the container starts
+CMD ["./url-shortener-app"]
