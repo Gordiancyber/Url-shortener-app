@@ -69,15 +69,7 @@ This is a simple URL shortener application built using the Go programming langua
 ## API Endpoints
 
 - `POST /shorten`: Shorten a URL.
-  Example: `curl -X POST -H "Content-Type: application/json" -d '{"url": "https://www.example.com"}' http://localhost:8080/shorten`
+  Example: 
+  ```bash
+  curl -X POST -H "Content-Type: application/json" -d '{"url": "https://www.example.com"}' http://localhost:8080/shorten
 
-- `GET /<short_url>`: Redirect to the original URL using the short URL.
-  Example: `curl http://localhost:8080/<short_url>`
-
-## Contributing
-
-Contributions are welcome! Feel free to open issues and pull requests.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
