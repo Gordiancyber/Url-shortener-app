@@ -99,4 +99,16 @@ func (us *URLShortener) getTopDomainsList(limit int) map[string]int {
 	return topDomains
 }
 
+func main() {
+	shortener := &URLShortener{
+		urls:          make(map[string]string),
+		domainMetrics: make(map[string]int),
+	}
 
+	http.HandleFunc("/shorten", shortener.shortenURL)
+	http.HandleFunc("/", shortener.redirectToOriginalURL)
+	http.HandleFunc("/metrics/top-domains", shortener.getTopDomains)
+
+	fmt.Println("Server is running on port 8080")
+	http.ListenAndServe(":8080", nil)
+}
