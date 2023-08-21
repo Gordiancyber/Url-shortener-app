@@ -20,3 +20,11 @@ func shortenURL(rdb *redis.Client, url string) (string, error) {
 
     return shortURL, nil
 }
+func redirectToURL(rdb *redis.Client, shortURL string) (string, error) {
+    url, err := rdb.Get(ctx, keyPrefix+shortURL).Result()
+    if err != nil {
+        return "", err
+    }
+
+    return url, nil
+}
