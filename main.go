@@ -85,4 +85,18 @@ func (us *URLShortener) getOriginalURL(shortURL string) (string, bool) {
 	return "", false
 }
 
+func (us *URLShortener) getTopDomainsList(limit int) map[string]int {
+	domains := make([]string, 0, len(us.domainMetrics))
+	for domain := range us.domainMetrics {
+		domains = append(domains, domain)
+	}
+
+	topDomains := make(map[string]int, limit)
+	for _, domain := range domains {
+		topDomains[domain] = us.domainMetrics[domain]
+	}
+
+	return topDomains
+}
+
 
