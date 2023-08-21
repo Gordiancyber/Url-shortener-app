@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 # Build the Go application
-RUN go build -o url-shortener .
+RUN go build -o url-shortener-app .
 
 # Expose the port your application listens on
 EXPOSE 8080
