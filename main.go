@@ -1,154 +1,114 @@
 package main
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
-	"sort"
 	"strings"
 	"sync"
-
-	"github.com/go-redis/redis/v8"
-	"golang.org/x/net/context"
 )
 
-var (
-	rdb           *redis.Client
-	originalToShortURL = make(map[string]string)
-	domainToCount = make(map[string]int)
-	lock sync.Mutex
-	ctx = context.Background()
-)
-
-// NewRedisClient creates and returns a new Redis client instance.
-func NewRedisClient() *redis.Client {
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-	})
-
-	return rdb
+type URLShortener struct {
+	urls          map[string]string
+	domainMetrics map[string]int
+	mu            sync.Mutex
 }
 
-func main() {
-	fmt.Println("URL Shortener with Go and Redis")
-
-	// Initialize the Redis client
-	rdb = NewRedisClient()
-	defer rdb.Close()
-
-	// Handle the root path
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Welcome to the URL Shortener!")
-	})
-
-	// Handle the /shorten endpoint
-	http.HandleFunc("/shorten", shortenHandler)
-
-	// Handle the /r/ endpoint for redirection
-	http.HandleFunc("/r/", redirectHandler)
-
-	// Handle the /metrics endpoint
-	http.HandleFunc("/metrics", metricsHandler)
-
-	// Start the HTTP server
-	log.Fatal(http.ListenAndServe(":8080", nil))
-}
-
-// shortenHandler handles shortening URLs and preventing duplicates.
-func shortenHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		url := r.FormValue("url")
-
-		// Ensure thread-safe access to data
-		lock.Lock()
-		defer lock.Unlock()
-
-		// Check if the original URL has already been shortened
-		if shortURL, ok := originalToShortURL[url]; ok {
-			jsonResponse, _ := json.Marshal(map[string]string{"short_url": shortURL})
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			w.Write(jsonResponse)
-			return
-		}
-
-		// Generate a new short URL and store the mapping
-		shortURL, err := shortenURL(rdb, url)
-		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		// Store the mapping of original URL to short URL
-		originalToShortURL[url] = shortURL
-
-		// Extract the domain from the input URL
-		u, err := url.Parse(url)
-		if err != nil {
-			http.Error(w, "Bad Request", http.StatusBadRequest)
-			return
-		}
-		domain := strings.TrimPrefix(u.Host, "www.")
-		domainToCount[domain]++
-
-		// Respond with the short URL
-		jsonResponse, _ := json.Marshal(map[string]string{"short_url": shortURL})
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		w.Write(jsonResponse)
+func (us *URLShortener) shortenURL(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		URL string `json:"url"`
 	}
-}
 
-// redirectHandler handles redirecting short URLs to original URLs.
-func redirectHandler(w http.ResponseWriter, r *http.Request) {
-	shortURL := r.URL.Path[len("/r/"):]
-	url, err := redirectToURL(rdb, shortURL)
-	if err != nil {
-		http.Error(w, "Not Found", http.StatusNotFound)
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil || input.URL == "" {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	http.Redirect(w, r, url, http.StatusSeeOther)
+	us.mu.Lock()
+	defer us.mu.Unlock()
+
+	if shortURL, exists := us.urls[input.URL]; exists {
+		fmt.Fprintf(w, `{"shortURL": "%s"}`, shortURL)
+		return
+	}
+
+	hash := generateShortURL(input.URL)
+	us.urls[input.URL] = hash
+	us.domainMetrics[getDomain(input.URL)]++
+
+	fmt.Fprintf(w, `{"shortURL": "%s"}`, hash)
 }
 
-// metricsHandler handles providing the top 3 domains with the highest counts.
-func metricsHandler(w http.ResponseWriter, r *http.Request) {
-	// Ensure thread-safe access to data
-	lock.Lock()
-	defer lock.Unlock()
+func (us *URLShortener) redirectToOriginalURL(w http.ResponseWriter, r *http.Request) {
+	shortURL := strings.TrimPrefix(r.URL.Path, "/")
+	us.mu.Lock()
+	defer us.mu.Unlock()
 
-	// Create a slice of domain-count pairs for sorting
-	var domainCountPairs []struct {
-		Domain string
-		Count  int
-	}
-	for domain, count := range domainToCount {
-		domainCountPairs = append(domainCountPairs, struct {
-			Domain string
-			Count  int
-		}{Domain: domain, Count: count})
+	if originalURL, exists := us.getOriginalURL(shortURL); exists {
+		http.Redirect(w, r, originalURL, http.StatusFound)
+		return
 	}
 
-	// Sort the domain-count pairs by count in descending order
-	sort.Slice(domainCountPairs, func(i, j int) bool {
-		return domainCountPairs[i].Count > domainCountPairs[j].Count
-	})
+	http.Error(w, "URL not found", http.StatusNotFound)
+}
 
-	// Get the top 3 domains
-	topDomains := domainCountPairs[:3]
+func (us *URLShortener) getTopDomains(w http.ResponseWriter, r *http.Request) {
+	us.mu.Lock()
+	defer us.mu.Unlock()
 
-	// Prepare the JSON response
-	response := make(map[string]int)
-	for _, pair := range topDomains {
-		response[pair.Domain] = pair.Count
+	topDomains := us.getTopDomainsList(3)
+	json.NewEncoder(w).Encode(topDomains)
+}
+
+func generateShortURL(url string) string {
+	hasher := sha1.New()
+	hasher.Write([]byte(url))
+	hash := hex.EncodeToString(hasher.Sum(nil))
+	return hash[:6]
+}
+
+func getDomain(urlString string) string {
+	parsedURL, _ := url.Parse(urlString)
+	return parsedURL.Hostname()
+}
+
+func (us *URLShortener) getOriginalURL(shortURL string) (string, bool) {
+	for originalURL, hashedURL := range us.urls {
+		if hashedURL == shortURL {
+			return originalURL, true
+		}
+	}
+	return "", false
+}
+
+func (us *URLShortener) getTopDomainsList(limit int) map[string]int {
+	domains := make([]string, 0, len(us.domainMetrics))
+	for domain := range us.domainMetrics {
+		domains = append(domains, domain)
 	}
 
-	jsonResponse, _ := json.Marshal(response)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write(jsonResponse)
+	topDomains := make(map[string]int, limit)
+	for _, domain := range domains {
+		topDomains[domain] = us.domainMetrics[domain]
+	}
+
+	return topDomains
+}
+
+func main() {
+	shortener := &URLShortener{
+		urls:          make(map[string]string),
+		domainMetrics: make(map[string]int),
+	}
+
+	http.HandleFunc("/shorten", shortener.shortenURL)
+	http.HandleFunc("/", shortener.redirectToOriginalURL)
+	http.HandleFunc("/metrics/top-domains", shortener.getTopDomains)
+
+	fmt.Println("Server is running on port 8080")
+	http.ListenAndServe(":8080", nil)
 }
