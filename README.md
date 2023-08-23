@@ -69,7 +69,7 @@ This is a simple URL shortener application built using the Go programming langua
 3. Pull Docker Image here :
    ```bash
    docker pull heygordian/url-shortener-app:latest
-``
+   ```
    ## API Endpoints
 - `POST /shorten`: Shorten a URL.
   Example: 
