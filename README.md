@@ -65,8 +65,10 @@ This is a simple URL shortener application built using the Go programming langua
     ```bash
     docker run -p 8080:8080 url-shortener-app
     ```
-
-## API Endpoints
+3. Pull Docker Image here :
+   ```bash
+   docker pull heygordian/url-shortener-app:latest## API Endpoints
+   ```
 
 - `POST /shorten`: Shorten a URL.
   Example: 
