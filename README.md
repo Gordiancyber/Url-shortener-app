@@ -51,7 +51,12 @@ This is a simple URL shortener application built using the Go programming langua
     ```bash
     curl http://localhost:8080/<short_url>
     ```
-
+4. To retrieve the top domain metrics:
+   
+   ```bash
+   curl http://localhost:8080/metrics/top-domains
+   ```
+   
 ## Dockerization
 
 1. Build the Docker image:
